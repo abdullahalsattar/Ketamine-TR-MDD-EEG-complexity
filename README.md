@@ -21,8 +21,6 @@ The same data are analysed with three complementary methods.
 ## Repository contents
 
 
-
-.
 ├── README.md	
 
 ├── Sattar et al 2026 Linear mixed-effects models.R        	# 1. Linear mixed-effects models
