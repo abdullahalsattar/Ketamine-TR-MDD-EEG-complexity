@@ -2,11 +2,11 @@
 
 Analysis code for:
 
-> Sattar, A., et al. (2026). \\\\\\\*Ketamine Induces Changes in Neural Complexity: A Multi-metric Cross-over EEG Study Analyzed with Mixed, Bayesian, and Permutation Approaches.\\\\\\\* Manuscript under review.
+> Sattar et al. (2026). Ketamine Induces Changes in Neural Complexity: A Multi-metric Cross-over EEG Study Analyzed with Mixed, Bayesian, and Permutation Approaches. (Manuscript under review September 2026).
 
 The same data are analysed with three complementary methods.
 
-\---
+
 
 ## Study design
 
