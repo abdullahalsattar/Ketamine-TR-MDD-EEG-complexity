@@ -73,9 +73,6 @@ Reference levels in all three methods: **Fentanyl** for Dose and **Baseline** fo
 
 ## Data format
 
-All scripts read the same file: `data/mdd\\\\\\\_complexity\\\\\\\_data.csv`.
-
-It must be in long format (one row per participant, dose and timepoint), with a header row and **8 columns in this order**:
 
 |Column|Content|Values|
 |-|-|-|
