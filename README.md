@@ -36,9 +36,9 @@ The same data are analysed with three complementary methods.
 
 
 
-### 1\. Linear mixed-effects models (`lmm\\\\\\\_analysis.R`)
+### 1\. Linear mixed-effects models (`Sattar et al 2026 Linear mixed-effects models.R`)
 
-* **Model:** `DV \\\\\\\~ Dose \\\\\\\* Time + (1 | Participant)`, REML
+* **Model:** `DV ~ Dose * Time + (1|Participant)`, REML
 * **Tests:** Type III ANOVA with Satterthwaite degrees of freedom
 * **Follow-up:** Bonferroni-corrected pairwise contrasts (`emmeans`)
 * **Effect sizes:** marginal and conditional R², ICC, standardised coefficients
@@ -46,9 +46,9 @@ The same data are analysed with three complementary methods.
 
 
 
-### 2\. Bayesian hierarchical models (`bhm\\\\\\\_analysis.R`)
+### 2\. Bayesian hierarchical models (`Sattar et al 2026 Bayesian hierarchical models.R`)
 
-* **Model:** `DV \\\\\\\~ Dose \\\\\\\* Time + (1 | Participant)`, Gaussian, fitted with `brms`
+* **Model:** `DV ~ Dose * Time + (1 | Participant)`, Gaussian, fitted with `brms`
 * **Priors:** weakly informative, scaled to each outcome's SD
 * **Sampling:** 4 chains × 15,000 iterations (7,500 warm-up)
 * **Outputs:** posterior medians, 95% credible intervals and probability of direction; posterior contrasts at each timepoint; Bayesian R², ICC and LOO
@@ -57,7 +57,7 @@ The same data are analysed with three complementary methods.
 
 
 
-### 3\. Permutation tests (`permutation\\\\\\\_analysis.py`)
+### 3\. Permutation tests (`Sattar et al 2026 Permutation tests.py`)
 
 * **Permutation scheme:** condition labels permuted within each participant, 25,000 permutations
 * **Tests:** repeated-measures F for main effects and for dose effects at 2 h and 24 h; paired mean differences for pairwise comparisons
