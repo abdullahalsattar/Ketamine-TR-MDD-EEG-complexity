@@ -14,7 +14,7 @@ The same data are analysed with three complementary methods.
 * **Design:** double-blind, active-controlled, within-subject, three-way crossover
 * **Conditions:** Fentanyl 50 µg (active control), ketamine 0.5 mg/kg, ketamine 1.0 mg/kg (intramuscular)
 * **Timepoints:** Baseline (pre-dose), 2 h and 24 h post-dose
-* **Outcomes:** Higuchi's fractal dimension (HFD), Lempel-Ziv complexity (LZC), and multiscale entropy at fine (scales 1–3), intermediate (6–8) and coarse (9–10) scales
+* **Outcomes:** Higuchi's fractal dimension (HFD), Lempel-Ziv complexity (LZC), and multiscale entropy at fine (scales 1–5), intermediate (6–10) and coarse (10–15) scales
 
 
 
