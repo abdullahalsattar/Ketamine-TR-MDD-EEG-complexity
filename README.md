@@ -24,8 +24,11 @@ The same data are analysed with three complementary methods.
 
 .
 ├── README.md	
+
 ├── Sattar et al 2026 Linear mixed-effects models.R        	# 1. Linear mixed-effects models
+
 ├── Sattar et al 2026 Bayesian hierarchical models.R            # 2. Bayesian hierarchical models
+
 ├── Sattar et al 2026 Permutation tests.py   			# 3. Permutation tests
 
 
