@@ -8,6 +8,12 @@
 # Priors:      Weakly informative, scaled to each outcome's SD
 # Sampling:    4 chains x 15,000 iterations (7,500 warm-up)
 # References:  Dose = Fentanyl; Time = Baseline (treatment coding)
+# Inference:   Dose and Time effects are tested on MARGINAL contrasts (averaged
+#              over the other factor); Dose x Time on the interaction contrasts.
+#              Post hoc contrasts are computed from posterior cell means.
+# Change log (Nov 2026): omnibus Dose/Time tests changed from
+#   reference-cell coefficients to marginal contrasts with implied priors;
+#   added marginal, within-dose and change-vs-fentanyl contrasts.
 # ==============================================================================
 
 # ---- Packages ----------------------------------------------------------------
@@ -119,24 +125,57 @@ fixed <- bind_rows(lapply(dvs, function(y) {
 }))
 
 # ---- 5. Posterior contrasts --------------------------------------------------
-# Dose contrasts at each timepoint (dose coefficient + Dose x Time interaction),
-# and time contrasts within the Fentanyl condition.
+# The 9 Dose x Time cell means are rebuilt from the coefficients for every draw,
+# then contrasted (marginal, within-dose, change vs fentanyl, dose at each time).
+
+cell_means <- function(m) {
+  B  <- b_draws(m, c("Intercept", dose_b, time_b, inter_b))
+  b  <- function(k) B[, paste0("b_", k)]
+  dl <- levels(df$Dose); tl <- levels(df$Time)
+  mu <- array(NA_real_, c(nrow(B), 3, 3), dimnames = list(NULL, dl, tl))
+  for (d in 1:3) for (t in 1:3)
+    mu[, d, t] <- b("Intercept") +
+      (if (d > 1) b(paste0("Dose", dl[d])) else 0) +
+      (if (t > 1) b(paste0("Time", tl[t])) else 0) +
+      (if (d > 1 && t > 1) b(paste0("Dose", dl[d], ":Time", tl[t])) else 0)
+  mu
+}
 
 contrast_draws <- function(m) {
-  M <- b_draws(m, c(dose_b, time_b, inter_b))
-  b <- function(k) M[, paste0("b_", k)]
-  
-  dose_at <- function(t) {
-    e05 <- b("Dose0.5mg_Ketamine") + if (t == "Baseline") 0 else b(paste0("Dose0.5mg_Ketamine:Time", t))
-    e10 <- b("Dose1.0mg_Ketamine") + if (t == "Baseline") 0 else b(paste0("Dose1.0mg_Ketamine:Time", t))
-    setNames(list(e05, e10, e10 - e05),
-             paste(c("0.5mg vs Fentanyl", "1.0mg vs Fentanyl", "1.0mg vs 0.5mg"), "at", t))
+  mu <- cell_means(m)
+  Fe <- "Fentanyl"; K05 <- "0.5mg_Ketamine"; K10 <- "1.0mg_Ketamine"
+  BL <- "Baseline"; H2 <- "2h_Post"; H24 <- "24h_Post"
+  mD <- function(d) rowMeans(mu[, d, ])          # dose, averaged over time
+  mT <- function(t) rowMeans(mu[, , t])          # time, averaged over dose
+  ch <- function(d, t2, t1) mu[, d, t2] - mu[, d, t1]
+  qd <- function(d) mu[, d, H2] - (mu[, d, BL] + mu[, d, H24]) / 2
+
+  out <- list(
+    "Marginal: 0.5mg vs Fentanyl" = mD(K05) - mD(Fe),
+    "Marginal: 1.0mg vs Fentanyl" = mD(K10) - mD(Fe),
+    "Marginal: 1.0mg vs 0.5mg"    = mD(K10) - mD(K05),
+    "Marginal: 2h vs Baseline"    = mT(H2)  - mT(BL),
+    "Marginal: 24h vs Baseline"   = mT(H24) - mT(BL),
+    "Marginal: 24h vs 2h"         = mT(H24) - mT(H2),
+    "Marginal: quadratic (2h vs mean of Baseline and 24h)" = mT(H2) - (mT(BL) + mT(H24)) / 2)
+
+  for (d in c(Fe, K05, K10)) {
+    out[[paste0("Within ", d, ": 2h vs Baseline")]]  <- ch(d, H2,  BL)
+    out[[paste0("Within ", d, ": 24h vs Baseline")]] <- ch(d, H24, BL)
+    out[[paste0("Within ", d, ": 24h vs 2h")]]       <- ch(d, H24, H2)
   }
-  
-  c(dose_at("Baseline"), dose_at("2h_Post"), dose_at("24h_Post"),
-    list("2h vs Baseline (Fentanyl)"  = b("Time2h_Post"),
-         "24h vs Baseline (Fentanyl)" = b("Time24h_Post"),
-         "24h vs 2h (Fentanyl)"       = b("Time24h_Post") - b("Time2h_Post")))
+  for (d in c(K05, K10)) {
+    out[[paste0(d, " vs Fentanyl: change 2h - Baseline")]]  <- ch(d, H2,  BL) - ch(Fe, H2,  BL)
+    out[[paste0(d, " vs Fentanyl: change 24h - Baseline")]] <- ch(d, H24, BL) - ch(Fe, H24, BL)
+    out[[paste0(d, " vs Fentanyl: change 24h - 2h")]]       <- ch(d, H24, H2) - ch(Fe, H24, H2)
+    out[[paste0(d, " vs Fentanyl: quadratic")]]             <- qd(d) - qd(Fe)
+  }
+  for (t in c(BL, H2, H24)) {
+    out[[paste0("At ", t, ": 0.5mg vs Fentanyl")]] <- mu[, K05, t] - mu[, Fe, t]
+    out[[paste0("At ", t, ": 1.0mg vs Fentanyl")]] <- mu[, K10, t] - mu[, Fe, t]
+    out[[paste0("At ", t, ": 1.0mg vs 0.5mg")]]    <- mu[, K10, t] - mu[, K05, t]
+  }
+  out
 }
 
 contrasts <- bind_rows(lapply(dvs, function(y) {
@@ -145,34 +184,50 @@ contrasts <- bind_rows(lapply(dvs, function(y) {
 }))
 
 # ---- 6. Joint tests: ROPE and Savage-Dickey Bayes factors --------------------
-# ROPE: all coefficients in a set within +/- 5% of the outcome SD.
-# BF10 (joint): Gaussian approximation to the posterior at the null (all = 0).
+# Dose and Time are tested on MARGINAL contrasts (averaged over the other
+# factor); Dose x Time on the four interaction contrasts. Each contrast set is
+# a linear map L of the coefficients; its prior is the one implied by the
+# coefficient priors: Cov = L diag(prior_sd^2) L'.
+# ROPE: all contrasts in a set within +/- 5% of the outcome SD.
+# BF10 = prior density at 0 / posterior density at 0 (Gaussian approximation).
 
 joint_rope <- function(M, halfwidth) {
   p_null <- mean(apply(abs(M) <= halfwidth, 1, all))
   c(P_against_null = 1 - p_null, Evidence_ratio = (1 - p_null) / p_null)
 }
 
-bf10_joint <- function(M, prior_sd) {
-  z <- rep(0, ncol(M))
-  dmvnorm(z, sigma = diag(prior_sd^2, ncol(M))) /          # prior density at 0
-    dmvnorm(z, mean = colMeans(M), sigma = cov(M))         # posterior density at 0
+bf10_joint <- function(C, prior_cov) {
+  z <- rep(0, ncol(C))
+  dmvnorm(z, sigma = prior_cov) /                          # prior density at 0
+    dmvnorm(z, mean = colMeans(C), sigma = cov(C))         # posterior density at 0
 }
 
+# Coefficient order: dose_b (2), time_b (2), inter_b (05:2h, 10:2h, 05:24h, 10:24h)
+coefs <- c(dose_b, time_b, inter_b)
+L_sets <- list(
+  "Dose (marginal)" = rbind(c(1, 0, 0, 0, 1/3, 0,   1/3, 0),
+                            c(0, 1, 0, 0, 0,   1/3, 0,   1/3)),
+  "Time (marginal)" = rbind(c(0, 0, 1, 0, 1/3, 1/3, 0,   0),
+                            c(0, 0, 0, 1, 0,   0,   1/3, 1/3)),
+  "Dose x Time"     = cbind(matrix(0, 4, 4), diag(4)))
+
 omnibus <- bind_rows(lapply(dvs, function(y) {
-  s    <- sd(df[[y]], na.rm = TRUE)
-  sets <- list("Dose (at Baseline)"   = list(dose_b,  2 * s),
-               "Time (under Fentanyl)" = list(time_b,  2 * s),
-               "Dose x Time"           = list(inter_b, s))
-  bind_rows(lapply(names(sets), function(e) {
-    M <- b_draws(models[[y]], sets[[e]][[1]])
+  s   <- sd(df[[y]], na.rm = TRUE)
+  psd <- c(rep(2 * s, 4), rep(s, 4))                       # main: 2*SD; interactions: SD
+  B   <- b_draws(models[[y]], coefs)
+  bind_rows(lapply(names(L_sets), function(e) {
+    L <- L_sets[[e]]
+    C <- B %*% t(L)                                        # posterior draws of contrasts
     data.frame(DV = y, Effect = e,
-               t(joint_rope(M, 0.05 * s)),
-               BF10 = bf10_joint(M, sets[[e]][[2]]))
+               t(joint_rope(C, 0.05 * s)),
+               BF10 = bf10_joint(C, L %*% diag(psd^2) %*% t(L)))
   }))
 }))
 
 # ---- 7. Per-coefficient Savage-Dickey Bayes factors --------------------------
+# Note: these are reference-cell coefficients (dose effect at Baseline; time
+# effect under Fentanyl), as listed in the fixed-effects table.
+       
 bf10_coef <- function(x, prior_sd)
   exp(bayesfactor_parameters(x, prior = distribution_normal(1e5, 0, prior_sd),
                              direction = "two-sided", null = 0)$log_BF)
