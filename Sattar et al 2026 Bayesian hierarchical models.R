@@ -26,7 +26,7 @@ library(dplyr)
 set.seed(12345)
 
 # ---- Data --------------------------------------------------------------------
-df <- read.csv("data/mdd_complexity_data.csv", check.names = FALSE)
+df <- read.csv(".............................", check.names = FALSE)
 
 names(df) <- c("Participant", "Dose", "Time",
                "HFD", "LZC", "MSE_fine", "MSE_mid", "MSE_coarse")
