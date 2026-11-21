@@ -6,7 +6,8 @@ Timepoints: Baseline, 2 h, 24 h post-dose
 
 Condition labels are permuted within each participant (repeated-measures
 exchangeability). 25,000 permutations; p = (1 + #null >= observed) / (1 + N).
-Multiple comparisons: Westfall-Young single-step maxT within each family of tests.
+Permutation p-values vary slightly between runs.
+Multiple comparisons: Westfall-Young single-step maxT within each family of tests (within each measure).
 """
 
 import numpy as np
