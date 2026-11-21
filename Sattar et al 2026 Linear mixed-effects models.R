@@ -19,7 +19,7 @@ library(effectsize)   # standardized coefficients
 library(dplyr)        # data manipulation
 
 # ---- Data --------------------------------------------------------------------
-df <- read.csv("data/mdd_complexity_data.csv", check.names = FALSE)
+df <- read.csv(" ...................", check.names = FALSE)
 
 names(df) <- c("Participant", "Dose", "Time",
                "HFD", "LZC", "MSE_fine", "MSE_mid", "MSE_coarse")
