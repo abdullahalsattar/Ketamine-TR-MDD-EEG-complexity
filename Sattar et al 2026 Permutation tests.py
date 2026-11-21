@@ -150,6 +150,48 @@ for m in MEASURES:
     record(m, "Dose x Time by interval", ["2h - Baseline", "24h - Baseline", "24h - 2h"],
            obs, p_perm(obs, null), p_maxT(obs, null))
 
+
+# ---- 6. Interval tests: maxT across all measures, and pairwise contrasts ------
+#  6a. Same interval F tests as 5b, but one dose permutation per participant is
+#      shared by all 5 measures x 3 intervals, so maxT covers all 15 tests.
+#  6b. Pairwise interval contrasts: per-participant difference in change between
+#      two treatments, exact sign-flip test (all 2^n sign patterns); maxT over
+#      the 3 treatment pairs, and over 5 measures x 3 pairs for 24h - 2h.
+import itertools
+
+INTERVALS = ["2h - Baseline", "24h - Baseline", "24h - 2h"]
+V_all = np.stack([cube(m) for m in MEASURES], axis=2)                # n x dose x measure x time
+C_all = V_all[..., [1, 2, 2]] - V_all[..., [0, 0, 1]]                # n x dose x measure x interval
+
+obs, null = permute(C_all, lambda Y: np.array([rm_F(Y[:, :, mi, i])
+                                               for mi in range(len(MEASURES)) for i in range(3)]))
+p_all = p_maxT(obs, null)
+for mi, m in enumerate(MEASURES):
+    s = slice(3 * mi, 3 * mi + 3)
+    record(m, "Dose x Time by interval, maxT across measures", INTERVALS,
+           obs[s], p_perm(obs[s], null[:, s]), p_all[s])
+
+COMPARE = [(2, 0), (1, 0), (2, 1)]                                   # 1.0 vs Fent, 0.5 vs Fent, 1.0 vs 0.5
+comp_names = [f"{DOSES[i]} - {DOSES[j]}" for i, j in COMPARE]
+D = np.stack([C_all[:, i] - C_all[:, j] for i, j in COMPARE], axis=-1)   # n x measure x interval x pair
+n = D.shape[0]
+signs = np.array(list(itertools.product([1.0, -1.0], repeat=n)))     # all 2^n patterns
+obs_pw = np.abs(D.mean(0))                                           # measure x interval x pair
+null_pw = np.abs(np.tensordot(signs, D, axes=(1, 0)) / n)            # 2^n x measure x interval x pair
+tol = 1e-12
+p_raw = (null_pw >= obs_pw - tol).mean(0)
+p_3pairs = (null_pw.max(3, keepdims=True) >= obs_pw - tol).mean(0)
+mx_24 = null_pw[:, :, 2, :].reshape(len(signs), -1).max(1)
+p_24_all = (mx_24[:, None, None] >= obs_pw[:, 2, :] - tol).mean(0)  # measure x pair
+for mi, m in enumerate(MEASURES):
+    for i, iv in enumerate(INTERVALS):
+        for q, c in enumerate(comp_names):
+            results.append({"Measure": m, "Analysis": "Pairwise interval contrast (exact sign-flip)",
+                            "Test": f"{c}, change {iv}", "Statistic": D[:, mi, i, q].mean(),
+                            "p_perm": p_raw[mi, i, q], "p_maxT": p_3pairs[mi, i, q],
+                            "p_maxT_across_measures": p_24_all[mi, q] if i == 2 else np.nan})
+
+
 # ---- Export ------------------------------------------------------------------
 Path("results").mkdir(exist_ok=True)
 pd.DataFrame(results).to_csv("results/permutation_results.csv", index=False)
